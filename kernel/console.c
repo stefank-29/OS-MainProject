@@ -360,6 +360,9 @@ consoleread(struct inode *ip, char *dst, int n)
 		b = 5;
 	}
 
+
+	//TODO iz user speace-a da skapiram koji je minor
+
 	iunlock(ip);
 	target = n;
 	acquire(&cons.lock);
@@ -439,12 +442,14 @@ consolewrite(struct inode *ip, char *buf, int n)
 		//return n;
 	}
 
-	iunlock(ip);
-	acquire(&cons.lock);
-	for(i = 0; i < n; i++)
-		consputc(buf[i] & 0xff);
-	release(&cons.lock);
-	ilock(ip);
+	if(ip->minor == b + 1){ // ako je aktivni terminal
+		iunlock(ip);
+		acquire(&cons.lock);
+		for(i = 0; i < n; i++)
+			consputc(buf[i] & 0xff);
+		release(&cons.lock);
+		ilock(ip);
+	}
 
 	return n;
 }

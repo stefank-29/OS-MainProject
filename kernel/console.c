@@ -15,6 +15,17 @@
 #include "proc.h"
 #include "x86.h"
 
+
+int
+strleng(char *s){
+	int n;
+
+	for(n = 0; s[n]; n++)
+		;
+	return n;
+
+}
+
 static void consputc(int);
 
 static int panicked = 0;
@@ -157,7 +168,7 @@ cgaputc(int c)
 	outb(CRTPORT+1, pos>>8);
 	outb(CRTPORT, 15);
 	outb(CRTPORT+1, pos);
-	crt[pos] = ' ' | 0x0700;
+	crt[pos] = ' ' | 0x0700; // ovde currColor za taj terminal
 }
 
 void
@@ -176,6 +187,11 @@ consputc(int c)
 	cgaputc(c);
 }
 
+void
+copyOfCurrTty(){
+
+}
+
 #define INPUT_BUF 128
 struct {
 	char buf[INPUT_BUF];
@@ -184,7 +200,21 @@ struct {
 	uint e;  // Edit index
 } input;
 
+#define TTY_BUF 10000
+
+struct {
+	char buf[INPUT_BUF];
+	char baft[TTY_BUF];
+	uint r;  // Read index
+	uint w;  // Write index
+	uint e;  // Edit index
+} tty[6];
+
 #define C(x)  ((x)-'@')  // Control-x
+
+#define A(x) ((x) + 'Z') // Alt-x
+
+int b = 0;
 
 void
 consoleintr(int (*getc)(void))
@@ -199,26 +229,101 @@ consoleintr(int (*getc)(void))
 			doprocdump = 1;
 			break;
 		case C('U'):  // Kill line.
-			while(input.e != input.w &&
-			      input.buf[(input.e-1) % INPUT_BUF] != '\n'){
-				input.e--;
+			while(tty[b].e != tty[b].w &&
+			      tty[b].buf[(tty[b].e-1) % INPUT_BUF] != '\n'){
+				tty[b].e--;
 				consputc(BACKSPACE);
 			}
 			break;
 		case C('H'): case '\x7f':  // Backspace
-			if(input.e != input.w){
-				input.e--;
+			if(tty[b].e != tty[b].w){
+				tty[b].e--;
 				consputc(BACKSPACE);
 			}
 			break;
+		case A('1'):
+			b = 0;
+		    crt = (ushort*)P2V(0xb8000);
+			memset(crt, 0, sizeof(crt[0])*(25*80));
+			//consputc('a', 0x0700);
+			//cprintf("aaaaa");
+			//consolewrite(ip, buf, 7);
+			outb(CRTPORT, 14);
+			outb(CRTPORT+1, crt);
+			outb(CRTPORT, 15);
+			outb(CRTPORT+1, crt);
+			for(int i = 0; tty[0].baft[i] != '\0';  i++){
+				cgaputc(tty[0].baft[i]);
+			}
+			break;
+		case A('2'):
+			b = 1;
+		    crt = (ushort*)P2V(0xb8000);
+			memset(crt, 0, sizeof(crt[0])*(25*80));
+			outb(CRTPORT, 14);
+			outb(CRTPORT+1, crt);
+			outb(CRTPORT, 15);
+			outb(CRTPORT+1, crt);
+			for(int i = 0; tty[1].baft[i] != '\0';  i++){
+				cgaputc(tty[1].baft[i]);
+			}
+			break;
+		case A('3'):
+		    b = 2;
+		    crt = (ushort*)P2V(0xb8000);
+			memset(crt, 0, sizeof(crt[0])*(25*80));
+			outb(CRTPORT, 14);
+			outb(CRTPORT+1, crt);
+			outb(CRTPORT, 15);
+			outb(CRTPORT+1, crt);
+			for(int i = 0; tty[2].baft[i] != '\0';  i++){
+				cgaputc(tty[2].baft[i]);
+			}
+			break;
+		case A('4'):
+			b = 3;
+		    crt = (ushort*)P2V(0xb8000);
+			memset(crt, 0, sizeof(crt[0])*(25*80));
+			outb(CRTPORT, 14);
+			outb(CRTPORT+1, crt);
+			outb(CRTPORT, 15);
+			outb(CRTPORT+1, crt);
+			for(int i = 0; tty[3].baft[i] != '\0';  i++){
+				cgaputc(tty[3].baft[i]);
+			}
+			break;
+		case A('5'):
+		    b = 4;
+		    crt = (ushort*)P2V(0xb8000);
+			memset(crt, 0, sizeof(crt[0])*(25*80));
+			outb(CRTPORT, 14);
+			outb(CRTPORT+1, crt);
+			outb(CRTPORT, 15);
+			outb(CRTPORT+1, crt);
+			for(int i = 0; tty[4].baft[i] != '\0';  i++){
+				cgaputc(tty[4].baft[i]);
+			}
+			break;
+		case A('6'):
+			b = 5;
+		    crt = (ushort*)P2V(0xb8000);
+			memset(crt, 0, sizeof(crt[0])*(25*80));
+			outb(CRTPORT, 14);
+			outb(CRTPORT+1, crt);
+			outb(CRTPORT, 15);
+			outb(CRTPORT+1, crt);
+			for(int i = 0; tty[5].baft[i] != '\0';  i++){
+				cgaputc(tty[5].baft[i]);
+			}
+			break;
 		default:
-			if(c != 0 && input.e-input.r < INPUT_BUF){
+			if(c != 0 && tty[b].e-tty[b].r < INPUT_BUF){
 				c = (c == '\r') ? '\n' : c;
-				input.buf[input.e++ % INPUT_BUF] = c;
+				tty[b].buf[tty[b].e++ % INPUT_BUF] = c;
 				consputc(c);
-				if(c == '\n' || c == C('D') || input.e == input.r+INPUT_BUF){
-					input.w = input.e;
-					wakeup(&input.r);
+				if(c == '\n' || c == C('D') || tty[b].e == tty[b].r+INPUT_BUF){
+					tty[b].w = tty[b].e;
+					wakeup(&tty[b].r);
 				}
 			}
 			break;
@@ -236,19 +341,40 @@ consoleread(struct inode *ip, char *dst, int n)
 	uint target;
 	int c;
 
+	if (ip->minor == 1){
+		b = 0;
+	}
+	if (ip->minor == 2){
+		b = 1;
+	}
+	if (ip->minor == 3){
+		b = 2;
+	}
+	if (ip->minor == 4){
+		b = 3;
+	}
+	if (ip->minor == 5){
+		b = 4;
+	}
+	if (ip->minor == 6){
+		b = 5;
+	}
+
 	iunlock(ip);
 	target = n;
 	acquire(&cons.lock);
 	while(n > 0){
-		while(input.r == input.w){
+		while(tty[b].r == tty[b].w){
 			if(myproc()->killed){
 				release(&cons.lock);
 				ilock(ip);
 				return -1;
 			}
-			sleep(&input.r, &cons.lock);
+			sleep(&tty[b].r, &cons.lock);
 		}
-		c = input.buf[input.r++ % INPUT_BUF];
+		c = tty[b].buf[tty[b].r++ % INPUT_BUF];
+		int k = strleng(tty[b].baft);
+		tty[b].baft[k++] = c;
 		if(c == C('D')){  // EOF
 			if(n < target){
 				// Save ^D for next time, to make sure
@@ -272,6 +398,46 @@ int
 consolewrite(struct inode *ip, char *buf, int n)
 {
 	int i;
+	// TODO ako je aktivan terminal rokaj na consolu ako nije samo puni bafer
+
+
+	if (ip->minor == 1){
+		int k = strleng(tty[0].baft);
+		for (int j = 0; buf[j] != '\0'; j++)
+			tty[0].baft[k++] = buf[j];
+
+		//return n;
+	}
+	if (ip->minor == 2){
+		int k = strleng(tty[1].baft);
+		for (int j = 0; buf[j] != '\0'; j++)
+			tty[1].baft[k++] = buf[j];
+		//return n;
+	}
+	if (ip->minor == 3){
+		int k = strleng(tty[2].baft);
+		for (int j = 0; buf[j] != '\0'; j++)
+			tty[2].baft[k++] = buf[j];
+		//return n;
+	}
+	if (ip->minor == 4){
+		int k = strleng(tty[3].baft);
+		for (int j = 0; buf[j] != '\0'; j++)
+			tty[3].baft[k++] = buf[j];
+		//return n;
+	}
+	if (ip->minor == 5){
+		int k = strleng(tty[4].baft);
+		for (int j = 0; buf[j] != '\0'; j++)
+			tty[4].baft[k++] = buf[j];
+		//return n;
+	}
+	if (ip->minor == 6){
+		int k = strleng(tty[5].baft);
+		for (int j = 0; buf[j] != '\0'; j++)
+			tty[5].baft[k++] = buf[j];
+		//return n;
+	}
 
 	iunlock(ip);
 	acquire(&cons.lock);

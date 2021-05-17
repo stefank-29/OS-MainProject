@@ -1,0 +1,39 @@
+{
+    "workbench.colorCustomizations": {
+        "titleBar.activeForeground": "#e7e7e7",
+        "titleBar.inactiveForeground": "#e7e7e799",
+        "titleBar.activeBackground": "#9c0a0a",
+        "titleBar.inactiveBackground": "#9c0a0a99",
+        "activityBar.activeBackground": "#cc0d0d",
+        "activityBar.activeBorder": "#0bb40b",
+        "activityBar.background": "#cc0d0d",
+        "activityBar.foreground": "#e7e7e7",
+        "activityBar.inactiveForeground": "#e7e7e799",
+        "activityBarBadge.background": "#0bb40b",
+        "activityBarBadge.foreground": "#e7e7e7",
+        "statusBar.background": "#9c0a0a",
+        "statusBar.foreground": "#e7e7e7",
+        "statusBarItem.hoverBackground": "#cc0d0d"
+    },
+    "editor.formatOnSave": true,
+
+    "eslint.alwaysShowStatus": false,
+    "editor.codeActionsOnSave": {
+        "source.fixAll": true
+    },
+    // "prettier.disableLanguages": ["javascript", "javascriptreact"],
+    "peacock.color": "#9c0a0a",
+    "files.associations": {
+        "types.h": "c",
+        "defs.h": "c",
+        "fcntl.h": "c",
+        "file.h": "c",
+        "param.h": "c",
+        "stat.h": "c",
+        "math.h": "c",
+        "limits": "c",
+        "*.tcc": "c",
+        "type_traits": "c",
+        "cmath": "c"
+    }
+}

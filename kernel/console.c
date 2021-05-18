@@ -60,6 +60,31 @@ printint(int xx, int base, int sign)
 		consputc(buf[i]);
 }
 
+
+#define INPUT_BUF 128
+struct {
+	char buf[INPUT_BUF];
+	uint r;  // Read index
+	uint w;  // Write index
+	uint e;  // Edit index
+} input;
+
+#define TTY_BUF 10000
+
+struct {
+	char buf[INPUT_BUF];
+	char baft[TTY_BUF];
+	uint r;  // Read index
+	uint w;  // Write index
+	uint e;  // Edit index
+} tty[6];
+
+#define C(x)  ((x)-'@')  // Control-x
+
+#define A(x) ((x) + 'Z') // Alt-x
+
+int currtty = 0;
+
 // Print to the console. only understands %d, %x, %p, %s.
 void
 cprintf(char *fmt, ...)
@@ -78,6 +103,8 @@ cprintf(char *fmt, ...)
 	argp = (uint*)(void*)(&fmt + 1);
 	for(i = 0; (c = fmt[i] & 0xff) != 0; i++){
 		if(c != '%'){
+			int k = strleng(tty[currtty].baft);
+			tty[currtty].baft[k++] = c;
 			consputc(c);
 			continue;
 		}
@@ -181,7 +208,7 @@ consputc(int c)
 	}
 
 	if(c == BACKSPACE){
-		uartputc('\b'); uartputc(' '); uartputc('\b');
+		uartputc('\currtty'); uartputc(' '); uartputc('\currtty');
 	} else
 		uartputc(c);
 	cgaputc(c);
@@ -189,29 +216,6 @@ consputc(int c)
 
 
 
-#define INPUT_BUF 128
-struct {
-	char buf[INPUT_BUF];
-	uint r;  // Read index
-	uint w;  // Write index
-	uint e;  // Edit index
-} input;
-
-#define TTY_BUF 10000
-
-struct {
-	char buf[INPUT_BUF];
-	char baft[TTY_BUF];
-	uint r;  // Read index
-	uint w;  // Write index
-	uint e;  // Edit index
-} tty[6];
-
-#define C(x)  ((x)-'@')  // Control-x
-
-#define A(x) ((x) + 'Z') // Alt-x
-
-int b = 0;
 
 void
 consoleintr(int (*getc)(void))
@@ -226,20 +230,20 @@ consoleintr(int (*getc)(void))
 			doprocdump = 1;
 			break;
 		case C('U'):  // Kill line.
-			while(tty[b].e != tty[b].w &&
-			      tty[b].buf[(tty[b].e-1) % INPUT_BUF] != '\n'){
-				tty[b].e--;
+			while(tty[currtty].e != tty[currtty].w &&
+			      tty[currtty].buf[(tty[currtty].e-1) % INPUT_BUF] != '\n'){
+				tty[currtty].e--;
 				consputc(BACKSPACE);
 			}
 			break;
 		case C('H'): case '\x7f':  // Backspace
-			if(tty[b].e != tty[b].w){
-				tty[b].e--;
+			if(tty[currtty].e != tty[currtty].w){
+				tty[currtty].e--;
 				consputc(BACKSPACE);
 			}
 			break;
 		case A('1'):
-			b = 0;
+			currtty = 0;
 		    crt = (ushort*)P2V(0xb8000);
 			memset(crt, 0, sizeof(crt[0])*(25*80));
 			//consputc('a', 0x0700);
@@ -254,7 +258,7 @@ consoleintr(int (*getc)(void))
 			}
 			break;
 		case A('2'):
-			b = 1;
+			currtty = 1;
 		    crt = (ushort*)P2V(0xb8000);
 			memset(crt, 0, sizeof(crt[0])*(25*80));
 			outb(CRTPORT, 14);
@@ -266,7 +270,7 @@ consoleintr(int (*getc)(void))
 			}
 			break;
 		case A('3'):
-		    b = 2;
+		    currtty = 2;
 		    crt = (ushort*)P2V(0xb8000);
 			memset(crt, 0, sizeof(crt[0])*(25*80));
 			outb(CRTPORT, 14);
@@ -278,7 +282,7 @@ consoleintr(int (*getc)(void))
 			}
 			break;
 		case A('4'):
-			b = 3;
+			currtty = 3;
 		    crt = (ushort*)P2V(0xb8000);
 			memset(crt, 0, sizeof(crt[0])*(25*80));
 			outb(CRTPORT, 14);
@@ -290,7 +294,7 @@ consoleintr(int (*getc)(void))
 			}
 			break;
 		case A('5'):
-		    b = 4;
+		    currtty = 4;
 		    crt = (ushort*)P2V(0xb8000);
 			memset(crt, 0, sizeof(crt[0])*(25*80));
 			outb(CRTPORT, 14);
@@ -302,7 +306,7 @@ consoleintr(int (*getc)(void))
 			}
 			break;
 		case A('6'):
-			b = 5;
+			currtty = 5;
 		    crt = (ushort*)P2V(0xb8000);
 			memset(crt, 0, sizeof(crt[0])*(25*80));
 			outb(CRTPORT, 14);
@@ -314,13 +318,13 @@ consoleintr(int (*getc)(void))
 			}
 			break;
 		default:
-			if(c != 0 && tty[b].e-tty[b].r < INPUT_BUF){
+			if(c != 0 && tty[currtty].e-tty[currtty].r < INPUT_BUF){
 				c = (c == '\r') ? '\n' : c;
-				tty[b].buf[tty[b].e++ % INPUT_BUF] = c;
+				tty[currtty].buf[tty[currtty].e++ % INPUT_BUF] = c;
 				consputc(c);
-				if(c == '\n' || c == C('D') || tty[b].e == tty[b].r+INPUT_BUF){
-					tty[b].w = tty[b].e;
-					wakeup(&tty[b].r);
+				if(c == '\n' || c == C('D') || tty[currtty].e == tty[currtty].r+INPUT_BUF){
+					tty[currtty].w = tty[currtty].e;
+					wakeup(&tty[currtty].r); // budi proces koji sleep-ujem u while-u
 				}
 			}
 			break;
@@ -339,42 +343,40 @@ consoleread(struct inode *ip, char *dst, int n)
 	int c;
 
 	if (ip->minor == 1){
-		b = 0;
+		currtty = 0;
 	}
 	if (ip->minor == 2){
-		b = 1;
+		currtty = 1;
 	}
 	if (ip->minor == 3){
-		b = 2;
+		currtty = 2;
 	}
 	if (ip->minor == 4){
-		b = 3;
+		currtty = 3;
 	}
 	if (ip->minor == 5){
-		b = 4;
+		currtty = 4;
 	}
 	if (ip->minor == 6){
-		b = 5;
+		currtty = 5;
 	}
 
-
-	//TODO iz user speace-a da skapiram koji je minor
 
 	iunlock(ip);
 	target = n;
 	acquire(&cons.lock);
-	while(n > 0){
-		while(tty[b].r == tty[b].w){
+	while(n > 0){  // zavrsi se ako napunim dst ili naidjem na enter
+		while(tty[currtty].r == tty[currtty].w){ // jednaki su ako nemam sta da citam (na enter w skoci na kraj tj. na e)
 			if(myproc()->killed){
 				release(&cons.lock);
 				ilock(ip);
 				return -1;
 			}
-			sleep(&tty[b].r, &cons.lock);
+			sleep(&tty[currtty].r, &cons.lock); // blokira trenutni proces (prosledim broj koji je adresa od input.r)
 		}
-		c = tty[b].buf[tty[b].r++ % INPUT_BUF];
-		int k = strleng(tty[b].baft);
-		tty[b].baft[k++] = c;
+		c = tty[currtty].buf[tty[currtty].r++ % INPUT_BUF];
+		int k = strleng(tty[currtty].baft);
+		tty[currtty].baft[k++] = c; // cuvam u tty baferu
 		if(c == C('D')){  // EOF
 			if(n < target){
 				// Save ^D for next time, to make sure
@@ -388,6 +390,7 @@ consoleread(struct inode *ip, char *dst, int n)
 		if(c == '\n')
 			break;
 	}
+	// r ne mora da bude == w na kraju f-je (ako je korisnicki bafer manji od input bafera) onda ponovo pozove read pa se citanje nastavlja od r indeksa
 	release(&cons.lock);
 	ilock(ip);
 
@@ -399,51 +402,42 @@ consolewrite(struct inode *ip, char *buf, int n)
 {
 	int i;
 	// TODO ako je aktivan terminal rokaj na consolu ako nije samo puni bafer
-
-
-
+	// TODO kruzni bafer za tty bufer
 
 	if (ip->minor == 1){
 		int k = strleng(tty[0].baft);
 		for (int j = 0; j < n; j++)
 			tty[0].baft[k++] = buf[j];
 
-		//return n;
 	}
 	if (ip->minor == 2){
 		int k = strleng(tty[1].baft);
 		for (int j = 0; j < n; j++)
 			tty[1].baft[k++] = buf[j];
-		//return n;
 	}
 	if (ip->minor == 3){
 		int k = strleng(tty[2].baft);
 		for (int j = 0; j < n; j++)
 			tty[2].baft[k++] = buf[j];
-		//return n;
 	}
 	if (ip->minor == 4){
 		int k = strleng(tty[3].baft);
 		for (int j = 0; j < n; j++)
 			tty[3].baft[k++] = buf[j];
-		//return n;
 	}
 	if (ip->minor == 5){
 		int k = strleng(tty[4].baft);
 		for (int j = 0; j < n; j++){
 			tty[4].baft[k++] = buf[j] & 0xff;
-			//consputc(buf[j] & 0xff);
 		}
-		//return n;
 	}
 	if (ip->minor == 6){
 		int k = strleng(tty[5].baft);
 		for (int j = 0; j < n; j++)
 			tty[5].baft[k++] = buf[j];
-		//return n;
 	}
 
-	if(ip->minor == b + 1){ // ako je aktivni terminal
+	if(ip->minor == currtty + 1){ // ako je aktivni terminal
 		iunlock(ip);
 		acquire(&cons.lock);
 		for(i = 0; i < n; i++)

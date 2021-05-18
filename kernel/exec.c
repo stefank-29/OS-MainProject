@@ -8,7 +8,7 @@
 #include "elf.h"
 
 int
-exec(char *path, char **argv)
+	exec(char *path, char **argv)
 {
 	char *s, *last;
 	int i, off;

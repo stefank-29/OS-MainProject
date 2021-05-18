@@ -187,10 +187,7 @@ consputc(int c)
 	cgaputc(c);
 }
 
-void
-copyOfCurrTty(){
 
-}
 
 #define INPUT_BUF 128
 struct {
@@ -253,7 +250,7 @@ consoleintr(int (*getc)(void))
 			outb(CRTPORT, 15);
 			outb(CRTPORT+1, crt);
 			for(int i = 0; tty[0].baft[i] != '\0';  i++){
-				cgaputc(tty[0].baft[i]);
+				cgaputc(tty[0].baft[i]& 0xff);
 			}
 			break;
 		case A('2'):
@@ -265,7 +262,7 @@ consoleintr(int (*getc)(void))
 			outb(CRTPORT, 15);
 			outb(CRTPORT+1, crt);
 			for(int i = 0; tty[1].baft[i] != '\0';  i++){
-				cgaputc(tty[1].baft[i]);
+				cgaputc(tty[1].baft[i]& 0xff);
 			}
 			break;
 		case A('3'):
@@ -404,40 +401,44 @@ consolewrite(struct inode *ip, char *buf, int n)
 	// TODO ako je aktivan terminal rokaj na consolu ako nije samo puni bafer
 
 
+
+
 	if (ip->minor == 1){
 		int k = strleng(tty[0].baft);
-		for (int j = 0; buf[j] != '\0'; j++)
+		for (int j = 0; j < n; j++)
 			tty[0].baft[k++] = buf[j];
 
 		//return n;
 	}
 	if (ip->minor == 2){
 		int k = strleng(tty[1].baft);
-		for (int j = 0; buf[j] != '\0'; j++)
+		for (int j = 0; j < n; j++)
 			tty[1].baft[k++] = buf[j];
 		//return n;
 	}
 	if (ip->minor == 3){
 		int k = strleng(tty[2].baft);
-		for (int j = 0; buf[j] != '\0'; j++)
+		for (int j = 0; j < n; j++)
 			tty[2].baft[k++] = buf[j];
 		//return n;
 	}
 	if (ip->minor == 4){
 		int k = strleng(tty[3].baft);
-		for (int j = 0; buf[j] != '\0'; j++)
+		for (int j = 0; j < n; j++)
 			tty[3].baft[k++] = buf[j];
 		//return n;
 	}
 	if (ip->minor == 5){
 		int k = strleng(tty[4].baft);
-		for (int j = 0; buf[j] != '\0'; j++)
-			tty[4].baft[k++] = buf[j];
+		for (int j = 0; j < n; j++){
+			tty[4].baft[k++] = buf[j] & 0xff;
+			//consputc(buf[j] & 0xff);
+		}
 		//return n;
 	}
 	if (ip->minor == 6){
 		int k = strleng(tty[5].baft);
-		for (int j = 0; buf[j] != '\0'; j++)
+		for (int j = 0; j < n; j++)
 			tty[5].baft[k++] = buf[j];
 		//return n;
 	}

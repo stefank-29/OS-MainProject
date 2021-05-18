@@ -10,34 +10,33 @@ char *argv[] = { "sh", 0 };
 void
 handletty(int n)
 {
-       int pid;
-       char devname[] = "/dev/ttyN";
+        int pid;
+        char devname[] = "/dev/ttyN";
 
-       devname[strlen(devname)-1] = n + '0';
-       pid = fork();
-       if(pid < 0){
-               printf("init: fork failed\n");
-               exit();
-       }
-       if(pid == 0){
-               close(0);
-               close(1);
-               close(2);
+        devname[strlen(devname)-1] = n + '0';
+        pid = fork();
+        if(pid < 0){
+                printf("init: fork failed\n");
+                exit();
+        }
+        if(pid == 0){
+                close(0);
+                close(1);
+                close(2);
 
-               if(open(devname, O_RDWR) < 0){
-                       mknod(devname, 1, n);
-                       open(devname, O_RDWR);
-               }
-               dup(0);
-               dup(0);
+                if(open(devname, O_RDWR) < 0){
+                        mknod(devname, 1, n);
+                        open(devname, O_RDWR);
+                }
+                dup(0);
+                dup(0);
 
-			//    if(n == 1){
-               	printf("Starting sh on %s\n", devname);
-			//    }
-               exec("/bin/sh", argv);  // ucita se program shell
-               printf("init: exec sh failed\n");
-               exit();
-       }
+                printf("Starting sh on %s\n", devname);
+
+                exec("/bin/sh", argv);  // ucita se program shell
+                printf("init: exec sh failed\n");
+                exit();
+        }
 }
 
 int

@@ -71,6 +71,8 @@ struct {
 
 #define TTY_BUF 2000
 
+int init = 1;
+
 struct {
 	char buf[INPUT_BUF];
 	uint r;  // Read index
@@ -78,13 +80,30 @@ struct {
 	uint e;  // Edit index
 	char baft[TTY_BUF];
 	uint limit;
+	ushort ttyColor;
 } tty[6];
+
+static int currtty = 0;
+
+void
+setDefaultColors(){
+	tty[0].ttyColor = 0xB700;
+	tty[1].ttyColor = 0x2500;
+	tty[2].ttyColor = 0x4300;
+	tty[3].ttyColor = 0x6D00;
+	tty[4].ttyColor = 0x1500;
+	tty[5].ttyColor = 0x7A00;
+}
+
 
 #define C(x)  ((x)-'@')  // Control-x
 
 #define A(x) ((x) + 'Z') // Alt-x
 
-int currtty = 0;
+static int tty6Init = 0;
+
+// TODO colors
+// TODO [ttyN]
 
 // Print to the console. only understands %d, %x, %p, %s.
 void
@@ -176,12 +195,14 @@ cgaputc(int c)
 	outb(CRTPORT, 15);
 	pos |= inb(CRTPORT+1);
 
+
+
 	if(c == '\n')
 		pos += 80 - pos%80;
 	else if(c == BACKSPACE){
 		if(pos > 0) --pos;
 	} else
-		crt[pos++] = (c&0xff) | 0x0700;  // black on white
+		crt[pos++] = (c&0xff) | tty[currtty].ttyColor;
 
 	if(pos < 0 || pos > 25*80)
 		panic("pos under/overflow");
@@ -189,14 +210,16 @@ cgaputc(int c)
 	if((pos/80) >= 24){  // Scroll up.
 		memmove(crt, crt+80, sizeof(crt[0])*23*80);
 		pos -= 80;
-		memset(crt+pos, 0, sizeof(crt[0])*(24*80 - pos));
+		//memset(crt+pos, 0, sizeof(crt[0])*(24*80 - pos));
+		memmove(crt+pos, crt+pos+80,  sizeof(crt[0])*80);
+
 	}
 
 	outb(CRTPORT, 14);
 	outb(CRTPORT+1, pos>>8);
 	outb(CRTPORT, 15);
 	outb(CRTPORT+1, pos);
-	crt[pos] = ' ' | 0x0700; // ovde currColor za taj terminal
+	crt[pos] = ' ' | tty[currtty].ttyColor; // ovde currColor za taj terminal
 }
 
 void
@@ -219,24 +242,20 @@ void
 changeTty(){
 		crt = (ushort*)P2V(0xb8000);
 		memset(crt, 0, sizeof(crt[0])*(25*80));
-		//consputc('a', 0x0700);
-		//cprintf("aaaaa");
-		//consolewrite(ip, buf, 7);
 		outb(CRTPORT, 14);
 		outb(CRTPORT+1, crt);
 		outb(CRTPORT, 15);
 		outb(CRTPORT+1, crt);
 
-		if (tty[currtty].limit < 2000){
+		for(int i = 0; i < 80*25; i++) { // bg
+			crt[i] |= tty[currtty].ttyColor;
+		}
+		if (tty[currtty].limit < 2000){ // ttyBuf
 			for(int i = 0; i != tty[currtty].limit; i++){
 				cgaputc(tty[currtty].baft[i] & 0xff);
 			}
 		}
 		else{
-			// for(int i = ((tty[currtty].limit) % INPUT_BUF); (i % INPUT_BUF) < (tty[currtty].limit-1 % INPUT_BUF) ; i++){
-			// 	cgaputc(tty[currtty].baft[i % INPUT_BUF] & 0xff);
-			// }
-
 			for(int j = 0; j < 2000; j++){
 				cgaputc(tty[currtty].baft[((tty[currtty].limit % TTY_BUF) + j) % TTY_BUF] & 0xff);
 			}
@@ -279,7 +298,7 @@ consoleintr(int (*getc)(void))
 			break;
 		case A('3'):
 		    currtty = 2;
-		     changeTty();
+		    changeTty();
 			break;
 		case A('4'):
 			currtty = 3;
@@ -337,6 +356,10 @@ consoleread(struct inode *ip, char *dst, int n)
 		currtty = 5;
 	}
 
+	if(++tty6Init == 6){
+		currtty = 0;
+	}
+
 
 	iunlock(ip);
 	target = n;
@@ -372,47 +395,52 @@ consoleread(struct inode *ip, char *dst, int n)
 	return target - n;
 }
 
+
+
 int
 consolewrite(struct inode *ip, char *buf, int n)
 {
+
+
 	int i;
-	// TODO ako je aktivan terminal rokaj na consolu ako nije samo puni bafer
-	// TODO kruzni bafer za tty bufer
 
 	if (ip->minor == 1){
-		int k = strleng(tty[0].baft);
 		for (int j = 0; j < n; j++)
 			tty[0].baft[tty[0].limit++ % TTY_BUF] = buf[j];
 
 	}
 	if (ip->minor == 2){
-		int k = strleng(tty[1].baft);
 		for (int j = 0; j < n; j++)
 			tty[1].baft[tty[1].limit++ % TTY_BUF] = buf[j];
 	}
 	if (ip->minor == 3){
-		int k = strleng(tty[2].baft);
 		for (int j = 0; j < n; j++)
 			tty[2].baft[tty[2].limit++ % TTY_BUF] = buf[j];
 	}
 	if (ip->minor == 4){
-		int k = strleng(tty[3].baft);
 		for (int j = 0; j < n; j++)
 			tty[3].baft[tty[3].limit++ % TTY_BUF] = buf[j];
 	}
 	if (ip->minor == 5){
-		int k = strleng(tty[4].baft);
 		for (int j = 0; j < n; j++){
 			tty[4].baft[tty[4].limit++ % TTY_BUF] = buf[j];
 		}
 	}
 	if (ip->minor == 6){
-		int k = strleng(tty[5].baft);
 		for (int j = 0; j < n; j++)
 			tty[5].baft[tty[5].limit++ % TTY_BUF] = buf[j];
 	}
 
+
+
 	if(ip->minor == currtty + 1){ // ako je aktivni terminal
+		if (init == 1){
+			setDefaultColors();
+			init = 0;
+		}
+		for(int i = 0; i < 80*25; i++) { // bg
+			crt[i] |= tty[currtty].ttyColor;
+		}
 		iunlock(ip);
 		acquire(&cons.lock);
 		for(i = 0; i < n; i++)

@@ -8,7 +8,7 @@
 char *argv[] = { "sh", 0 };
 
 void
-handletty(int n)
+createtty(int n)
 {
         int pid;
         char devname[] = "/dev/ttyN";
@@ -55,9 +55,9 @@ main(void)
 	}
 	dup(0);  // stdout
 	dup(0);  // stderr
-        //printf("Welcome to console!");
+
 	for (i = 1; i <= 6; i++){
-		handletty(i);
+		createtty(i);
 	}
 
 	while((wpid=wait()) >= 0)

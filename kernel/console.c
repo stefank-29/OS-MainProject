@@ -285,7 +285,7 @@ setDefaultColors(){
 
 	for(int i = 0; i < 6; i++){
 		for(int j = 0; j < 8; j++){
-			strncpy(tty[i].commands[j], "", 0);
+			strncpy(tty[i].commands[j], 0, 0);
 		}
 		tty[i].currCommand = 0;
 	}
@@ -416,8 +416,9 @@ void
 moveCommands(int curr){
 	for(int i = 7; i >= 1; i--){
 		strncpy(tty[curr].commands[i], tty[curr].commands[i-1], strlen(tty[curr].commands[i-1]));
-		memset(tty[curr].commands[i-1], 0, sizeof tty[curr].commands[i-1]);
+		memset(tty[curr].commands[i-1], 0, strlen(tty[curr].commands[i-1]));
 	}
+	tty[curr].currCommand = 0;
 }
 
 
@@ -460,7 +461,8 @@ consoleread(struct inode *ip, char *dst, int n)
 		--n;
 		if(c == '\n'){
 			moveCommands(ip->minor-1);
-		//	cprintf("%s", tty[ip->minor-1].commands[1]);
+			i = 0;
+
 			break;
 		}
 

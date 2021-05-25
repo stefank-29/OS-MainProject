@@ -81,6 +81,9 @@ struct {
 	char baft[TTY_BUF];
 	uint limit;
 	ushort ttyColor;
+	char commands[8][128];
+	uint currCommand;
+	uint numOfCommands;
 } tty[6];
 
 static int currtty = 0;
@@ -92,7 +95,8 @@ static int currtty = 0;
 
 static int tty6Init = 0;
 
-// TODO [ttyN]
+
+
 
 // Print to the console. only understands %d, %x, %p, %s.
 void
@@ -272,17 +276,67 @@ changeTty(){
 
 void
 setDefaultColors(){
-	tty[0].ttyColor = 0xB700;
+	tty[0].ttyColor = 0x3700;
 	tty[1].ttyColor = 0x7400;
 	tty[2].ttyColor = 0x5C00;
 	tty[3].ttyColor = 0xA600;
 	tty[4].ttyColor = 0x2100;
 	tty[5].ttyColor = 0x6A00;
 
+	for(int i = 0; i < 6; i++){
+		for(int j = 0; j < 8; j++){
+			strncpy(tty[i].commands[j], "", 0);
+		}
+		tty[i].currCommand = 0;
+	}
+
+
+
 	for(int i = 0; i < 80*25; i++) { // bg
 		crt[i] |= tty[0].ttyColor;
 	}
 }
+
+void
+upperCommand(){
+	int c;
+
+	if(tty[currtty].currCommand < 7){
+		tty[currtty].currCommand++;
+	}
+
+	while(tty[currtty].e != tty[currtty].w &&
+			tty[currtty].buf[(tty[currtty].e-1) % INPUT_BUF] != '\n'){
+				tty[currtty].e--;
+				consputc(BACKSPACE);
+	}
+	for(int i = 0; i < strlen(tty[currtty].commands[tty[currtty].currCommand]); i++){
+		c = tty[currtty].commands[tty[currtty].currCommand][i];
+		tty[currtty].buf[tty[currtty].e++ % INPUT_BUF] = c;
+		consputc(c);
+	}
+}
+
+void
+downCommand(){
+	int c;
+
+	if(tty[currtty].currCommand > 0){
+		tty[currtty].currCommand--;
+	}
+
+	while(tty[currtty].e != tty[currtty].w &&
+			tty[currtty].buf[(tty[currtty].e-1) % INPUT_BUF] != '\n'){
+				tty[currtty].e--;
+				consputc(BACKSPACE);
+	}
+	for(int i = 0; i < strlen(tty[currtty].commands[tty[currtty].currCommand]); i++){
+		c = tty[currtty].commands[tty[currtty].currCommand][i];
+		tty[currtty].buf[tty[currtty].e++ % INPUT_BUF] = c;
+		consputc(c);
+	}
+}
+
 
 void
 consoleintr(int (*getc)(void))
@@ -292,6 +346,12 @@ consoleintr(int (*getc)(void))
 	acquire(&cons.lock);
 	while((c = getc()) >= 0){
 		switch(c){
+		case 0xE2: // KEY_UP
+			upperCommand();
+			break;
+		case 0xE3:
+			downCommand();
+			break;
 		case C('P'):  // Process listing.
 			// procdump() locks cons.lock indirectly; invoke later
 			doprocdump = 1;
@@ -352,36 +412,25 @@ consoleintr(int (*getc)(void))
 	}
 }
 
+void
+moveCommands(int curr){
+	for(int i = 7; i >= 1; i--){
+		strncpy(tty[curr].commands[i], tty[curr].commands[i-1], strlen(tty[curr].commands[i-1]));
+		memset(tty[curr].commands[i-1], 0, sizeof tty[curr].commands[i-1]);
+	}
+}
+
+
+
 int
 consoleread(struct inode *ip, char *dst, int n)
 {
 	uint target;
 	int c;
-
-	if (ip->minor == 1){
-		currtty = 0;
-	}
-	if (ip->minor == 2){
-		currtty = 1;
-	}
-	if (ip->minor == 3){
-		currtty = 2;
-	}
-	if (ip->minor == 4){
-		currtty = 3;
-	}
-	if (ip->minor == 5){
-		currtty = 4;
-	}
-	if (ip->minor == 6){
-		currtty = 5;
-	}
+	static int i = 0;
+	char comm[128] = "";
 
 
-	if(++tty6Init == 6){
-		currtty = 0;
-		ttyName();
-	}
 
 	iunlock(ip);
 	target = n;
@@ -395,8 +444,10 @@ consoleread(struct inode *ip, char *dst, int n)
 			}
 			sleep(&tty[ip->minor-1].r, &cons.lock); // blokira trenutni proces (prosledim broj koji je adresa od input.r)
 		}
+
 		c = tty[ip->minor-1].buf[tty[ip->minor-1].r++ % INPUT_BUF];
 		tty[ip->minor-1].baft[tty[ip->minor-1].limit++ % TTY_BUF] = c; // cuvam u tty baferu
+
 		if(c == C('D')){  // EOF
 			if(n < target){
 				// Save ^D for next time, to make sure
@@ -407,14 +458,20 @@ consoleread(struct inode *ip, char *dst, int n)
 		}
 		*dst++ = c;
 		--n;
-		if(c == '\n')
+		if(c == '\n'){
+			moveCommands(ip->minor-1);
+		//	cprintf("%s", tty[ip->minor-1].commands[1]);
 			break;
+		}
+
+		tty[ip->minor-1].commands[0][i++] = c; // cuvam komandu
+
 	}
 	// r ne mora da bude == w na kraju f-je (ako je korisnicki bafer manji od input bafera) onda ponovo pozove read pa se citanje nastavlja od r indeksa
 	release(&cons.lock);
 	ilock(ip);
-
-
+//	cprintf("%s", tty[ip->minor-1].commands[tty[ip->minor-1].currCommand]);
+	//
 	return target - n;
 }
 
@@ -462,3 +519,41 @@ consoleinit(void)
 	ioapicenable(IRQ_KBD, 0);
 }
 
+void
+setColour(ushort colour, int type){
+	ushort mask;
+	ushort colourMask;
+	if(type == 0){
+		mask = 0x00ff;
+	}else if(type == 1){
+		mask = 0x0fff;
+	}else if(type == 2){
+		mask = 0xf0ff;
+	}
+
+	tty[currtty].ttyColor = (tty[currtty].ttyColor & mask) | colour;
+	changeTty();
+}
+
+
+// 0 - both
+// 1 - bg
+// 2 - fg
+
+int
+sys_colour(void){
+
+	ushort colour;
+	int type;
+
+
+	if(argint(0, &colour) || argint(1, &type)){
+		return -1;
+	}
+	colour <<= 8;
+	setColour(colour, type);
+	//cprintf("%d", type);
+
+
+	return 0;
+}

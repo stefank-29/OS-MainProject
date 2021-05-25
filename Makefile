@@ -195,6 +195,7 @@ $T/mkfs: $T/mkfs.c $K/fs.h
 
 UPROGS=\
 	$U/_cat\
+	$U/_colour\
 	$U/_echo\
 	$U/_forktest\
 	$U/_grep\

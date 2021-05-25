@@ -120,6 +120,8 @@ atoi(const char *s)
 	return n;
 }
 
+
+
 void*
 memmove(void *vdst, const void *vsrc, int n)
 {

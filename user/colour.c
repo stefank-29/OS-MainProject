@@ -9,23 +9,6 @@
 #define ASCII_F_VALU 70
 
 
-void
-blockwriter(char *name, int blockNum){
-    // int fd, size, k;
-
-    // fd = open(name, O_CREATE | O_RDWR); // file
-    // size=512;
-
-    // // char niz[512] = "8arCLufFuKR5a9CDlIHvHNCvhMipyM0HD2GLX6q349NYW4IaZ9Xy67FtfRiegZu4V1yZ0hESKl22CEgItYkBmqIYJxIHonYm84fZnPloOGqIuh6gokrsOAqUuu2L3tNIv9MjIXQsfJsKfTrsRPBfzFICZnVr4egeEnQBFJdAGMXzQBQscgeQvIGowxH7EpLgBj5YsIUcMZ3byiW83Rf6HpZRs72Uv8FmwIwWaYbbGdFMHGSl5qAoFq5VPV2rB2CvAvYBkGJsLWEX8bhJSp1oJmNu0kdchO5SZLriwtNWdFVNomsAgEITwOEXqkHXgre3xJGkXCHQIAKbhPuHtIgn4KSCJSpgB3HY58mOSKIQGqWTPYhfuL1YtQ8jj9gT0GBWdkaFfSolUbDQDQLMzdsv3SHN108CAsMxBbXzEq1pzFevyUQFUuw3pIYJjpN6TyM3Oer6hukvQwncrBmDjkXa9NtW4ZtUOZEwE8PAerLEg9PeveMi3Iao7CBtE4gMxUUT";
-    // char niz[512] = "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr";
-    // for(int i = 0; i < blockNum; i++){
-    //     printf("Writing block %d\n", i);
-    //     if(write(fd, &niz, size) != size) {
-    //         printf("write error\n");
-    //     }
-    // }
-}
-
 
 void
 helpMenu(){
@@ -87,7 +70,6 @@ main(int argc, char *argv[])
             helpMenu();
         }
         else{
-            // printf("%d", atou(argv[1]));
             colour(atou(argv[1]), 0);
         }
     }
@@ -171,10 +153,6 @@ main(int argc, char *argv[])
     }
 
 
-//     blockwriter(filename, n);
-
-// TODO default
-    // helpMenu();
 
 	exit(); // mora exit na kraju poziva
 }

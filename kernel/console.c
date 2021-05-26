@@ -83,6 +83,7 @@ struct {
 	ushort ttyColor;
 	char commands[8][128];
 	uint currCommand;
+	uint firstCommandLen;
 	uint numOfCommands;
 } tty[6];
 
@@ -310,6 +311,7 @@ moveCommands(int curr){
 		tty[curr].numOfCommands++;
 	}
 	tty[curr].currCommand = 0;
+	tty[curr].firstCommandLen = 0;
 }
 
 void
@@ -350,6 +352,7 @@ downCommand(){
 		tty[currtty].buf[tty[currtty].e++ % INPUT_BUF] = c;
 		consputc(c);
 	}
+
 }
 
 
@@ -380,6 +383,9 @@ consoleintr(int (*getc)(void))
 			break;
 		case C('H'): case '\x7f':  // Backspace
 			if(tty[currtty].e != tty[currtty].w){
+				if(tty[currtty].currCommand == 0){ // brisem iz bufera za prvu komandu
+					tty[currtty].commands[0][--tty[currtty].firstCommandLen] = 0;
+				}
 				tty[currtty].e--;
 				consputc(BACKSPACE);
 			}
@@ -412,6 +418,11 @@ consoleintr(int (*getc)(void))
 			if(c != 0 && tty[currtty].e-tty[currtty].r < INPUT_BUF){
 				c = (c == '\r') ? '\n' : c;
 				tty[currtty].buf[tty[currtty].e++ % INPUT_BUF] = c;
+				if(tty[currtty].currCommand == 0){
+					if(c != '\n') { // cuvam prvu
+						tty[currtty].commands[0][tty[currtty].firstCommandLen++] = c;
+					}
+				}
 				consputc(c);
 				if(c == '\n' || c == C('D') || tty[currtty].e == tty[currtty].r+INPUT_BUF){
 					tty[currtty].w = tty[currtty].e;
@@ -563,7 +574,6 @@ sys_colour(void){
 	colour <<= 8;
 	setColour(colour, type);
 	//cprintf("%d", type);
-
 
 	return 0;
 }

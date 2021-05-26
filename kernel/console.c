@@ -298,10 +298,25 @@ setDefaultColors(){
 }
 
 void
+moveCommands(int curr){
+	for(int i = 7; i >= 1; i--){
+		if(i == 7){
+			memset(tty[curr].commands[i], 0, strlen(tty[curr].commands[i]));
+		}
+		strncpy(tty[curr].commands[i], tty[curr].commands[i-1], strlen(tty[curr].commands[i-1]));
+		memset(tty[curr].commands[i-1], 0, strlen(tty[curr].commands[i-1]));
+	}
+	if(tty[curr].numOfCommands < 8){
+		tty[curr].numOfCommands++;
+	}
+	tty[curr].currCommand = 0;
+}
+
+void
 upperCommand(){
 	int c;
 
-	if(tty[currtty].currCommand < 7){
+	if(tty[currtty].currCommand < 7 && tty[currtty].currCommand < tty[currtty].numOfCommands){
 		tty[currtty].currCommand++;
 	}
 
@@ -412,14 +427,7 @@ consoleintr(int (*getc)(void))
 	}
 }
 
-void
-moveCommands(int curr){
-	for(int i = 7; i >= 1; i--){
-		strncpy(tty[curr].commands[i], tty[curr].commands[i-1], strlen(tty[curr].commands[i-1]));
-		memset(tty[curr].commands[i-1], 0, strlen(tty[curr].commands[i-1]));
-	}
-	tty[curr].currCommand = 0;
-}
+
 
 
 
